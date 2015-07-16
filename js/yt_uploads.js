@@ -1,5 +1,5 @@
 // Define some variables used to remember state.
-var playlistId, nextPageToken, prevPageToken;
+var playlistId, nextPageToken, prevPageToken, playlistItems;
 
 // After the API loads, call a function to get the uploads playlist ID.
 function handleAPILoaded() {
@@ -22,42 +22,66 @@ function requestUserUploadsPlaylistId() {
 
 // Retrieve the list of videos in the specified playlist.
 function requestVideoPlaylist(playlistId, pageToken) {
-  $('#video-container').html('');
-  var requestOptions = {
-    playlistId: playlistId,
-    part: 'snippet',
-    maxResults: 10
-  };
-  if (pageToken) {
-    requestOptions.pageToken = pageToken;
-  }
-  var request = gapi.client.youtube.playlistItems.list(requestOptions);
-  request.execute(function(response) {
-    // Only show pagination buttons if there is a pagination token for the
-    // next or previous page of results.
-    nextPageToken = response.result.nextPageToken;
-    var nextVis = nextPageToken ? 'visible' : 'hidden';
-    $('#next-button').css('visibility', nextVis);
-    prevPageToken = response.result.prevPageToken
-    var prevVis = prevPageToken ? 'visible' : 'hidden';
-    $('#prev-button').css('visibility', prevVis);
-
-    var playlistItems = response.result.items;
-    if (playlistItems) {
-      $.each(playlistItems, function(index, item) {
-        displayResult(item.snippet);
-      });
-    } else {
-      $('#video-container').html('Sorry you have no uploaded videos');
+    $('#video-container').html('');
+    var requestOptions = {
+        playlistId: playlistId,
+        part: 'snippet',
+        maxResults: 10
+    };
+    if (pageToken) {
+        requestOptions.pageToken = pageToken;
     }
-  });
+    var request = gapi.client.youtube.playlistItems.list(requestOptions);
+    request.execute(function(response) {
+        // Only show pagination buttons if there is a pagination token for the
+        // next or previous page of results.
+        nextPageToken = response.result.nextPageToken;
+        var nextVis = nextPageToken ? 'visible' : 'hidden';
+        $('#next-button').css('visibility', nextVis);
+        prevPageToken = response.result.prevPageToken;
+        var prevVis = prevPageToken ? 'visible' : 'hidden';
+        $('#prev-button').css('visibility', prevVis);
+
+        playlistItems = response.result.items;
+        if (playlistItems) {
+            $('#video-container').append('<table>');
+            $.each(playlistItems, function(index, item) {
+                displayResult(item.snippet);
+            });
+            $('#video-container').append('</table>');
+        } else {
+            $('#video-container').html('Sorry you have no uploaded videos');
+        }
+    });
 }
 
 // Create a listing for a video.
 function displayResult(videoSnippet) {
   var title = videoSnippet.title;
   var videoId = videoSnippet.resourceId.videoId;
-  $('#video-container').append('<p>' + title + ' - ' + videoId + '</p>');
+  $('#video-container').append('<tr> <td>' + title + '</td><td><button class="submit-button" id=' + videoId +' onclick="sendToLRS(this.id)">Send to Portfolio</button>' + '</td></tr>');
+}
+
+// Insert of remove ILA from the LRS database
+function sendToLRS(videoId) {
+    $('#video-container').append("<p>" + videoId + "</p>");
+    var videoItem = document.getElementById(videoId);
+
+    if (videoItem.getAttribute("class") == "submit-button") {
+        videoItem.setAttribute("class", "sent-button");
+        $.each(playlistItems, function(index, item) {
+           if (item.snippet.resourceId.videoId === videoId) {
+               var answer = tc_sendStatement_YouTubeUpload(item.snippet);
+               $('#video-container').append("<p>Sending to LRS: " + JSON.stringify(answer, null, 4) + "</p>");
+               // Break out of the each loop
+               return false;
+           }
+        });
+        videoItem.innerHTML = "In Portfolio";
+    } else {
+        videoItem.setAttribute("class", "submit-button");
+        videoItem.innerHTML = "Send to Portfolio";
+    }
 }
 
 // Retrieve the next page of videos in the playlist.

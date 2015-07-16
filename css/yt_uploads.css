@@ -5,3 +5,11 @@
 .button-container {
   clear: both;
 }
+
+.submit-button {
+  background-color: white;
+}
+
+.sent-button {
+  background-color: limegreen;
+}
